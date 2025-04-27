@@ -41,10 +41,7 @@
           <button @click="addProduct" class="btn btn-success w-100 mt-3">
             ➕ Thêm vào danh sách
           </button>
-          <button @click="exportInvoice" class="btn btn-primary w-100 my-3">
-  📤 Xuất hóa đơn
-</button>
-
+          
         </div>
       </div>
 
