@@ -160,25 +160,18 @@ let editingIndex = -1
 
 const fetchProducts = async () => {
   try {
-    const response = await fetch(`${backendUrl}?action=getProducts`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    const data = await response.json();
-    products.value = data.products || [];
-    licenses.value = data.licenses || [];
+    const response = await axios.get(`${backendUrl}?action=getProducts`)
+    products.value = response.data.products || []
+    licenses.value = response.data.licenses || []
     models.value = products.value.map(product => ({
       modelName: product.modelName,
       description: product.description,
       price: product.price
-    }));
+    }))
   } catch (error) {
-    console.error('Lỗi lấy dữ liệu:', error);
+    console.error('Lỗi lấy dữ liệu:', error)
   }
-};
-
+}
 
 const availableLicenses = computed(() => {
   if (!selectedModelName.value) return []
@@ -286,35 +279,6 @@ onMounted(fetchProducts)
 const formatNumberInput = (value) => {
   if (!value) return '';
   return Number(value).toLocaleString('vi-VN');
-};
-
-const exportInvoice = async () => {
-  if (productList.value.length === 0) {
-    alert('Danh sách sản phẩm đang trống!');
-    return;
-  }
-  try {
-    const payload = {
-      action: 'exportBaoGia',
-      products: productList.value.map((item, index) => ({
-        stt: index + 1,
-        name: item.name,
-        description: item.description,
-        type: item.type,
-        unit: item.unit,
-        quantity: item.quantity,
-        price: item.price,
-        total: item.total,
-        vatAmount: item.vatAmount,
-        grandTotal: item.grandTotal
-      }))
-    };
-    const response = await axios.post(backendUrl, payload);
-    alert(response.data.message || 'Xuất hóa đơn thành công!');
-  } catch (error) {
-    console.error('Lỗi xuất hóa đơn:', error);
-    alert('Xuất hóa đơn thất bại!');
-  }
 };
 
 const updatePriceFormatted = (event) => {
