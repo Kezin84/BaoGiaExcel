@@ -160,18 +160,25 @@ let editingIndex = -1
 
 const fetchProducts = async () => {
   try {
-    const response = await axios.get(`${backendUrl}?action=getProducts`)
-    products.value = response.data.products || []
-    licenses.value = response.data.licenses || []
+    const response = await fetch(`${backendUrl}?action=getProducts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await response.json();
+    products.value = data.products || [];
+    licenses.value = data.licenses || [];
     models.value = products.value.map(product => ({
       modelName: product.modelName,
       description: product.description,
       price: product.price
-    }))
+    }));
   } catch (error) {
-    console.error('Lỗi lấy dữ liệu:', error)
+    console.error('Lỗi lấy dữ liệu:', error);
   }
-}
+};
+
 
 const availableLicenses = computed(() => {
   if (!selectedModelName.value) return []
