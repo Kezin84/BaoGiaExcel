@@ -41,7 +41,10 @@
           <button @click="addProduct" class="btn btn-success w-100 mt-3">
             ➕ Thêm vào danh sách
           </button>
-          
+          <button @click="exportInvoice" class="btn btn-primary w-100 my-3">
+  📤 Xuất hóa đơn
+</button>
+
         </div>
       </div>
 
@@ -276,6 +279,35 @@ onMounted(fetchProducts)
 const formatNumberInput = (value) => {
   if (!value) return '';
   return Number(value).toLocaleString('vi-VN');
+};
+
+const exportInvoice = async () => {
+  if (productList.value.length === 0) {
+    alert('Danh sách sản phẩm đang trống!');
+    return;
+  }
+  try {
+    const payload = {
+      action: 'exportBaoGia',
+      products: productList.value.map((item, index) => ({
+        stt: index + 1,
+        name: item.name,
+        description: item.description,
+        type: item.type,
+        unit: item.unit,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total,
+        vatAmount: item.vatAmount,
+        grandTotal: item.grandTotal
+      }))
+    };
+    const response = await axios.post(backendUrl, payload);
+    alert(response.data.message || 'Xuất hóa đơn thành công!');
+  } catch (error) {
+    console.error('Lỗi xuất hóa đơn:', error);
+    alert('Xuất hóa đơn thất bại!');
+  }
 };
 
 const updatePriceFormatted = (event) => {
