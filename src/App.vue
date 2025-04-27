@@ -288,49 +288,6 @@ const updatePriceFormatted = (event) => {
   editingProduct.price = Number(input) || 0;
 };
 
-const exportInvoice = async () => {
-  if (productList.value.length === 0) {
-    alert('Danh sách sản phẩm trống!');
-    return;
-  }
-
-  const payload = {
-    action: 'exportInvoice',
-    data: productList.value.map((product, index) => ({
-      stt: index + 1,
-      name: product.name,
-      description: product.description,
-      type: product.type,
-      unit: product.unit,
-      quantity: product.quantity,
-      price: product.price,
-      total: product.total,
-      vatAmount: product.vatAmount,
-      grandTotal: product.grandTotal,
-    })),
-    totalThanhTien: totalThanhTien.value,
-    totalVAT: totalVAT.value,
-    totalGrandTotal: totalGrandTotal.value
-  };
-
-  try {
-    const response = await axios.post(backendUrl, payload, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (response.data.success) {
-      alert('✅ Xuất hóa đơn thành công!');
-    } else {
-      alert('❌ Xuất thất bại: ' + response.data.message);
-    }
-  } catch (error) {
-    console.error('Lỗi khi xuất hóa đơn:', error);
-    alert('❌ Lỗi kết nối!');
-  }
-};
-
 </script>
 
 <style scoped>
