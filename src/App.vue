@@ -41,7 +41,12 @@
           <button @click="addProduct" class="btn btn-success w-100 mt-3">
             ➕ Thêm vào danh sách
           </button>
-          
+          <div class="text-end mt-3">
+  <button @click="exportToGoogleSheet" class="btn btn-primary">
+    📤 Xuất báo giá sang Google Sheet
+  </button>
+</div>
+
         </div>
       </div>
 
@@ -142,7 +147,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 
-const backendUrl = 'https://script.google.com/macros/s/AKfycbx27h7ia2gV8shUCNHw5chR0Y3VwC4csZHnjBZrJmVu-H7kwaBZ9A2v1UKA7xR5jLdeFQ/exec'
+const backendUrl = 'https://script.google.com/macros/s/AKfycbxYoVdYvA0QNanulci7YUegMka45bPzLQuut40k9piW4U1ss9v6cnpNTE9iwPAk3VuI5A/exec'
 
 const products = ref([])
 const licenses = ref([])
@@ -283,6 +288,31 @@ const updatePriceFormatted = (event) => {
   editingProduct.price = Number(input) || 0;
 };
 
+const exportToGoogleSheet = async () => {
+  if (productList.value.length === 0) {
+    alert('Danh sách hàng hóa trống, không thể xuất!')
+    return
+  }
+
+  try {
+    await fetch('https://script.google.com/macros/s/AKfycbzp7MVJpNIMSaa29fsa3aCD81wJVLKElCaAKOQ4WBLb38bh13CCfsrGV8uQKSh3F0QQcw/exec', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'no-cors',   // ⭐ QUAN TRỌNG: thêm dòng này ⭐
+      body: JSON.stringify({
+        action: 'exportBaoGia',
+        data: productList.value
+      })
+    })
+
+    alert('✅ XUẤT XONG NHA CHÚ SƠN')
+  } catch (error) {
+    console.error('Lỗi xuất Google Sheet:', error)
+    alert('❌ Lỗi kết nối khi xuất Google Sheet!')
+  }
+}
+
+
 </script>
 
 <style scoped>
@@ -294,3 +324,4 @@ const updatePriceFormatted = (event) => {
 .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
 .modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 400px; max-height: 90vh; overflow-y: auto; color:black}
 </style>
+
