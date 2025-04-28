@@ -1,14 +1,29 @@
 <template>
   <div class="container py-4">
     <h2 class="mb-4 text-center">Quản lý Hàng hóa</h2>
-
+    
     <div class="row">
       <div class="col-md-4">
         <div class="card shadow-sm p-3 mb-4 bg-body rounded">
           <h5 class="mb-3">Nhập thông tin</h5>
 
           <div class="mb-3">
-            <label class="form-label">Chọn Model (Thiết bị)</label>
+  <label class="form-label" style="color: red;font-weight: bold;">Tên Công Ty</label>
+  <input v-model="companyName" type="text" class="form-control" />
+</div>
+
+<div class="mb-3">
+  <label class="form-label" style="color: red;font-weight: bold;">Tên Người Nhận</label>
+  <input v-model="receiverName" type="text" class="form-control" />
+</div>
+
+<div class="mb-3">
+  <label class="form-label" style="color: red;font-weight: bold;">Địa Chỉ Người Nhận</label>
+  <input v-model="receiverAddress" type="text" class="form-control" />
+</div>
+
+          <div class="mb-3">
+            <label class="form-label" style="color: blue;font-weight: bold;">Chọn Model (Thiết bị)</label>
             <select v-model="selectedModelName" class="form-select" @change="onSelectModel">
               <option value="" disabled>-- Chọn thiết bị --</option>
               <option v-for="model in models" :key="model.modelName" :value="model.modelName">
@@ -18,7 +33,7 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Chọn License</label>
+            <label class="form-label" style="color: blue;font-weight: bold;" >Chọn License</label>
             <select v-model="selectedLicenseName" class="form-select">
               <option value="" disabled>-- Chọn license --</option>
               <option v-for="license in availableLicenses" :key="license.licenseName" :value="license.licenseName">
@@ -29,28 +44,40 @@
 
           <div class="row g-2">
             <div class="col-6">
-              <label class="form-label">Số lượng</label>
+              <label class="form-label" style="color: blue;font-weight: bold;">Số lượng</label>
               <input v-model.number="form.quantity" type="number" min="1" class="form-control" />
             </div>
             <div class="col-6">
-              <label class="form-label">VAT (%)</label>
+              <label class="form-label" style="color: blue;font-weight: bold;">VAT (%)</label>
               <input v-model.number="form.vat" type="number" min="0" class="form-control" />
             </div>
           </div>
 
-          <button @click="addProduct" class="btn btn-success w-100 mt-3">
+          <button @click="addProduct" class="btn btn-success w-100 mt-3" style="background-color: blue;">
             ➕ Thêm vào danh sách
           </button>
           <div class="text-end mt-3">
-  <button @click="exportToGoogleSheet" class="btn btn-primary">
+  <button @click="exportToGoogleSheet" class="btn btn-primary" style="background-color: green;">
     📤 Xuất báo giá sang Google Sheet
   </button>
+  
 </div>
 
         </div>
       </div>
 
       <div class="col-md-8">
+        <button @click="goToUpdateModel" class="btn btn-success btn-lg">
+        📦 Cập nhật giá Model
+      </button>
+
+      <button @click="goToUpdateLicense" class="btn btn-primary btn-lg">
+        🛡️ Cập nhật giá License
+      </button>
+
+      <button @click="goToCurrentForm" class="btn btn-warning btn-lg">
+        📝 Form báo giá hiện tại
+      </button>
         <table class="table table-bordered text-center align-middle fixed-table">
           <thead class="table-light">
             <tr>
@@ -94,30 +121,30 @@
       <div class="modal-content">
         <h5 class="modal-title">Chỉnh sửa thông tin</h5>
         <div class="mb-2">
-          <label class="form-label">Tên hàng hóa</label>
+          <label class="form-label" >Tên hàng hóa</label>
           <input disabled v-model="editingProduct.name" class="form-control" />
         </div>
         <div class="mb-2">
-          <label class="form-label">Diễn giải</label>
+          <label class="form-label" style="color: blue;font-weight: bold;">Diễn giải</label>
           <textarea style="height: 200px;" v-model="editingProduct.description" class="form-control"></textarea>
         </div>
         <div class="row g-2">
           <div class="col-6">
-            <label class="form-label">Hãng</label>
+            <label class="form-label"style="color: blue;font-weight: bold;">Hãng</label>
             <input v-model="editingProduct.type" class="form-control" />
           </div>
           <div class="col-6">
-            <label class="form-label">Đơn vị</label>
+            <label class="form-label"style="color: blue;font-weight: bold;">Đơn vị</label>
             <input v-model="editingProduct.unit" class="form-control" />
           </div>
         </div>
         <div class="row g-2 mt-2">
           <div class="col-6">
-            <label class="form-label">Số lượng</label>
+            <label class="form-label"style="color: blue;font-weight: bold;">Số lượng</label>
             <input v-model.number="editingProduct.quantity" type="number" min="1" class="form-control" />
           </div>
           <div class="col-6">
-            <label class="form-label">Đơn giá</label>
+            <label class="form-label"style="color: blue;font-weight: bold;">Đơn giá</label>
             <input
   type="text"
   class="form-control"
@@ -129,7 +156,7 @@
         </div>
         <div class="row g-2 mt-2">
           <div class="col-6">
-            <label class="form-label">VAT (%)</label>
+            <label class="form-label"style="color: red;font-weight: bold;">VAT (%)</label>
             <input v-model.number="editingProduct.vatPercent" type="number" min="0" class="form-control" />
           </div>
         </div>
@@ -148,6 +175,10 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 
 const backendUrl = 'https://script.google.com/macros/s/AKfycbxYoVdYvA0QNanulci7YUegMka45bPzLQuut40k9piW4U1ss9v6cnpNTE9iwPAk3VuI5A/exec'
+
+const companyName = ref('')
+const receiverName = ref('')
+const receiverAddress = ref('')
 
 const products = ref([])
 const licenses = ref([])
@@ -293,29 +324,55 @@ const exportToGoogleSheet = async () => {
     alert('Danh sách hàng hóa trống, không thể xuất!')
     return
   }
+  if (!companyName.value || !receiverName.value || !receiverAddress.value) {
+    alert('Vui lòng nhập đầy đủ thông tin Công ty, Người nhận, Địa chỉ!')
+    return
+  }
 
   try {
+    alert('⏳ Đang xuất dữ liệu, vui lòng chờ...')
+
     await fetch('https://script.google.com/macros/s/AKfycbzp7MVJpNIMSaa29fsa3aCD81wJVLKElCaAKOQ4WBLb38bh13CCfsrGV8uQKSh3F0QQcw/exec', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      mode: 'no-cors',   // ⭐ QUAN TRỌNG: thêm dòng này ⭐
+      mode: 'no-cors',
       body: JSON.stringify({
         action: 'exportBaoGia',
-        data: productList.value
+        data: productList.value,
+        companyName: companyName.value,
+        receiverName: receiverName.value,
+        receiverAddress: receiverAddress.value
       })
     })
 
-    alert('✅ XUẤT XONG NHA CHÚ SƠN')
+    setTimeout(() => {
+      alert('✅ OK RỒI CHÚ SƠN CU BỰ')
+      window.location.href = 'https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712#gid=1649674712'
+    }, 500)
+
   } catch (error) {
     console.error('Lỗi xuất Google Sheet:', error)
     alert('❌ Lỗi kết nối khi xuất Google Sheet!')
   }
 }
 
+const goToUpdateModel = () => {
+  window.open('https://docs.google.com/spreadsheets/d/11TL444ExNL6A5bh5qnSHmRonewpLvUoXLOYTRfyQLAQ/edit?gid=1535002389', '_blank');
+};
+
+const goToUpdateLicense = () => {
+  window.open('https://docs.google.com/spreadsheets/d/11TL444ExNL6A5bh5qnSHmRonewpLvUoXLOYTRfyQLAQ/edit?gid=1744217475', '_blank');
+};
+
+const goToCurrentForm = () => {
+  window.open('https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712', '_blank');
+};
 
 </script>
 
 <style scoped>
+
+.form-control{border-color:black ;}
 .container { max-width: 1600px; }
 .fixed-table { table-layout: fixed; width: 100%; }
 .fixed-table th, .fixed-table td { white-space: normal; word-break: break-word; padding: 8px; height: 80px; }
