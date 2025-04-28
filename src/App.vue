@@ -186,7 +186,7 @@ const models = ref([])
 const productList = ref([])
 const selectedModelName = ref('')
 const selectedLicenseName = ref('')
-const form = ref({ quantity: 1, vat: 10 })
+const form = ref({ quantity: 1, vat: 20 })
 const showModal = ref(false)
 const editingProduct = ref({})
 let editingIndex = -1
@@ -269,7 +269,7 @@ const addProduct = () => {
   selectedModelName.value = ''
   selectedLicenseName.value = ''
   form.value.quantity = 1
-  form.value.vat = 10
+  form.value.vat = 20
 }
 
 const totalThanhTien = computed(() =>
