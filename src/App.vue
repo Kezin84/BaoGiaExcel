@@ -41,6 +41,13 @@
               </option>
             </select>
           </div>
+          <div class="mb-3">
+  <label class="form-label" style="color: green;font-weight: bold;">Chọn loại tiền</label>
+  <select v-model="currency" class="form-select">
+    <option value="VND">VNĐ</option>
+    <option value="USD">USD</option>
+  </select>
+</div>
 
           <div class="row g-2">
             <div class="col-6">
@@ -187,7 +194,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted,watch } from 'vue'
 import axios from 'axios'
 
 const backendUrl = 'https://script.google.com/macros/s/AKfycbxYoVdYvA0QNanulci7YUegMka45bPzLQuut40k9piW4U1ss9v6cnpNTE9iwPAk3VuI5A/exec'
@@ -196,6 +203,7 @@ const companyName = ref('')
 const receiverName = ref('')
 const receiverAddress = ref('')
 
+const currency = ref('VND') // 🟡 ComboBox: VND hoặc USD
 
 const products = ref([])
 const licenses = ref([])
@@ -203,7 +211,7 @@ const models = ref([])
 const productList = ref([])
 const selectedModelName = ref('')
 const selectedLicenseName = ref('')
-const form = ref({ quantity: 1, vat: 20,offPercent: 0 })
+const form = ref({ quantity: 1, vat: 20, offPercent: 0 })
 const showModal = ref(false)
 const editingProduct = ref({})
 let editingIndex = -1
@@ -213,15 +221,22 @@ const fetchProducts = async () => {
     const response = await axios.get(`${backendUrl}?action=getProducts`)
     products.value = response.data.products || []
     licenses.value = response.data.licenses || []
-    models.value = products.value.map(product => ({
-      modelName: product.modelName,
-      description: product.description,
-      price: product.price
-    }))
+    updateModels()
   } catch (error) {
     console.error('Lỗi lấy dữ liệu:', error)
   }
 }
+
+// ✅ Update lại models khi currency thay đổi
+const updateModels = () => {
+  models.value = products.value.map(product => ({
+    modelName: product.modelName,
+    description: product.description,
+    price: currency.value === 'USD' ? product.priceUSD : product.priceVND
+  }))
+}
+
+watch(currency, updateModels) // 🔁 tự cập nhật lại model khi đổi tiền
 
 const availableLicenses = computed(() => {
   if (!selectedModelName.value) return []
@@ -231,11 +246,13 @@ const availableLicenses = computed(() => {
 })
 
 const findPrice = (licenseName, modelName) => {
-  const license = licenses.value.find(l => l.licenseName === licenseName)
-  if (!license) return 0
-  const model = license.models.find(m => m.model === modelName)
-  return model ? model.price : 0
-}
+  const license = licenses.value.find(l => l.licenseName === licenseName);
+  if (!license) return 0;
+  const model = license.models.find(m => m.model === modelName);
+  if (!model) return 0;
+  return currency.value === 'USD' ? (model.priceUSD || model.price) : model.price;
+};
+
 
 const addProduct = () => {
   if (!selectedModelName.value) {
@@ -248,12 +265,14 @@ const addProduct = () => {
   let name = selectedModelName.value
   let description = ''
 
-  const modelInfo = models.value.find(m => m.modelName === selectedModelName.value)
+  // ✅ LẤY GIÁ THEO CURRENCY
+  const modelInfo = products.value.find(m => m.modelName === selectedModelName.value)
   if (modelInfo) {
     description = modelInfo.description
-    price = modelInfo.price
+    price = currency.value === 'USD' ? modelInfo.priceUSD : modelInfo.priceVND
   }
 
+  // ✅ Nếu chọn license thì override giá
   if (selectedLicenseName.value) {
     price = findPrice(selectedLicenseName.value, selectedModelName.value)
     if (price === 0) {
@@ -266,35 +285,33 @@ const addProduct = () => {
     description = licenseObj?.description || ''
   }
 
-  // Tính giá sau khi trừ mức Off
-const finalPrice = Math.round(price * (1 - (form.value.offPercent || 0) / 100));
+  // ✅ OFF, VAT, TOTAL
+  const finalPrice = Math.round(price * (1 - (form.value.offPercent || 0) / 100))
+  const total = finalPrice * form.value.quantity
+  const vatAmount = (total * form.value.vat) / 100
+  const grandTotal = total + vatAmount
 
-const total = finalPrice * form.value.quantity
-const vatAmount = (total * form.value.vat) / 100
-const grandTotal = total + vatAmount
-
-productList.value.push({
-  name,
-  description,
-  type,
-  unit: 'Bộ',
-  quantity: form.value.quantity,
-  price: finalPrice,
-  total,
-  vatAmount,
-  grandTotal,
-  vatPercent: form.value.vat,
-  offPercent: form.value.offPercent || 0,
-  originPrice: price // ⭐ Lưu thêm giá gốc (chưa off)
-})
-
-
+  productList.value.push({
+    name,
+    description,
+    type,
+    unit: 'Bộ',
+    quantity: form.value.quantity,
+    price: finalPrice,
+    total,
+    vatAmount,
+    grandTotal,
+    vatPercent: form.value.vat,
+    offPercent: form.value.offPercent || 0,
+    originPrice: price // ⭐ Giá gốc để hiển thị cột "Giá List"
+  })
 
   selectedModelName.value = ''
   selectedLicenseName.value = ''
   form.value.quantity = 1
   form.value.vat = 20
 }
+
 
 const totalThanhTien = computed(() =>
   productList.value.reduce((sum, item) => sum + item.total, 0)
@@ -307,52 +324,49 @@ const totalGrandTotal = computed(() =>
 )
 
 const differenceThanhTienVsGiaList = computed(() =>
- totalTongGiaList.value - totalThanhTien.value
+  totalTongGiaList.value - totalThanhTien.value
 )
 
 const totalTongGiaList = computed(() =>
   productList.value.reduce((sum, item) => {
-    const origin = item.originPrice || 0;
-    const qty = item.quantity || 0;
-    return sum + (origin * qty);
+    const origin = item.originPrice || 0
+    const qty = item.quantity || 0
+    return sum + origin * qty
   }, 0)
 )
+
 const formatPrice = (value) => {
   if (isNaN(value)) return '0 ₫'
-  return value.toLocaleString('vi-VN') 
+  return value.toLocaleString('vi-VN')
 }
 
 const selectProduct = (product, index) => {
-  editingProduct.value = { 
-  ...product, 
-  offPercent: product.offPercent || 0, 
-  originPrice: product.originPrice || product.price // fallback nếu cũ không có originPrice
-}
-
+  editingProduct.value = {
+    ...product,
+    offPercent: product.offPercent || 0,
+    originPrice: product.originPrice || product.price
+  }
   editingIndex = index
   showModal.value = true
 }
 
 const updateProduct = () => {
-  const vatRate = editingProduct.value.vatPercent ?? 10;
+  const vatRate = editingProduct.value.vatPercent ?? 10
+  const offMultiplier = 1 - (editingProduct.value.offPercent || 0) / 100
+  const finalPrice = Math.round(editingProduct.value.originPrice * offMultiplier)
 
-  const offMultiplier = 1 - (editingProduct.value.offPercent || 0) / 100;
-  const finalPrice = Math.round(editingProduct.value.originPrice * offMultiplier);
+  const total = finalPrice * editingProduct.value.quantity
+  const vatAmount = (total * vatRate) / 100
+  const grandTotal = total + vatAmount
 
-  const total = finalPrice * editingProduct.value.quantity;
-  const vatAmount = (total * vatRate) / 100;
-  const grandTotal = total + vatAmount;
+  editingProduct.value.price = finalPrice
+  editingProduct.value.total = total
+  editingProduct.value.vatAmount = vatAmount
+  editingProduct.value.grandTotal = grandTotal
 
-  editingProduct.value.price = finalPrice;
-  editingProduct.value.total = total;
-  editingProduct.value.vatAmount = vatAmount;
-  editingProduct.value.grandTotal = grandTotal;
-
-  productList.value[editingIndex] = { ...editingProduct.value };
-  showModal.value = false;
-};
-
-
+  productList.value[editingIndex] = { ...editingProduct.value }
+  showModal.value = false
+}
 
 const deleteProduct = () => {
   productList.value.splice(editingIndex, 1)
@@ -360,15 +374,16 @@ const deleteProduct = () => {
 }
 
 onMounted(fetchProducts)
+
 const formatNumberInput = (value) => {
-  if (!value) return '';
-  return Number(value).toLocaleString('vi-VN');
-};
+  if (!value) return ''
+  return Number(value).toLocaleString('vi-VN')
+}
 
 const updatePriceFormatted = (event) => {
-  let input = event.target.value.replace(/[^\d]/g, ''); // chỉ giữ số
-  editingProduct.price = Number(input) || 0;
-};
+  let input = event.target.value.replace(/[^\d]/g, '')
+  editingProduct.price = Number(input) || 0
+}
 
 const exportToGoogleSheet = async () => {
   if (productList.value.length === 0) {
@@ -398,9 +413,8 @@ const exportToGoogleSheet = async () => {
 
     setTimeout(() => {
       alert('✅ OK RỒI CHÚ SƠN CU BỰ')
-      window.location.href = 'https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712#gid=1649674712'
+      window.location.href = 'https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712'
     }, 500)
-
   } catch (error) {
     console.error('Lỗi xuất Google Sheet:', error)
     alert('❌ Lỗi kết nối khi xuất Google Sheet!')
@@ -408,18 +422,19 @@ const exportToGoogleSheet = async () => {
 }
 
 const goToUpdateModel = () => {
-  window.open('https://docs.google.com/spreadsheets/d/11TL444ExNL6A5bh5qnSHmRonewpLvUoXLOYTRfyQLAQ/edit?gid=1535002389', '_blank');
-};
+  window.open('https://docs.google.com/spreadsheets/d/11TL444ExNL6A5bh5qnSHmRonewpLvUoXLOYTRfyQLAQ/edit?gid=1535002389', '_blank')
+}
 
 const goToUpdateLicense = () => {
-  window.open('https://docs.google.com/spreadsheets/d/11TL444ExNL6A5bh5qnSHmRonewpLvUoXLOYTRfyQLAQ/edit?gid=1744217475', '_blank');
-};
+  window.open('https://docs.google.com/spreadsheets/d/11TL444ExNL6A5bh5qnSHmRonewpLvUoXLOYTRfyQLAQ/edit?gid=1744217475', '_blank')
+}
 
 const goToCurrentForm = () => {
-  window.open('https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712', '_blank');
-};
-
+  window.open('https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712', '_blank')
+}
 </script>
+
+
 
 <style scoped>
 .form-control {
