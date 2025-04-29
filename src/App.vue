@@ -309,7 +309,7 @@ const addProduct = () => {
   selectedModelName.value = ''
   selectedLicenseName.value = ''
   form.value.quantity = 1
-  form.value.vat = 20
+  form.value.vat = 10
 }
 
 
