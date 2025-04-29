@@ -43,7 +43,7 @@
           </div>
           <div class="mb-3">
   <label class="form-label" style="color: green;font-weight: bold;">Chọn loại tiền</label>
-  <select v-model="currency" class="form-select">
+  <select v-model="currency" class="form-select" style="background-color: red;color: aliceblue;font-weight: bold;">
     <option value="VND">VNĐ</option>
     <option value="USD">USD</option>
   </select>
@@ -70,9 +70,17 @@
           </button>
           <div class="text-end mt-3">
   <button @click="exportToGoogleSheet" class="btn btn-primary" style="background-color: green;">
-    📤 Xuất báo giá sang Google Sheet
-  </button>
-  
+    <strong>(1)</strong>📤 Xuất báo giá sang Google Sheet
+  </button><br>
+  <a
+  href="https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/export?format=xlsx"
+  target="_blank"
+  download
+  class="btn btn-success"
+  style="margin-top: 1rem;"
+>
+<strong>(2)</strong> Tải file Excel⬇️
+</a>
 </div>
 
         </div>
@@ -99,8 +107,8 @@
     <th style="width: 80px;">Hãng</th>
     <th style="width: 80px;">Đơn vị tính</th>
     <th style="width: 50px;">S.L</th>
-    <th style="width: 120px;">Giá List (VNĐ)</th> <!-- ⭐ mới -->
-    <th style="width: 120px;">Đơn giá (VNĐ)</th>
+    <th style="width: 120px;">Giá List </th> <!-- ⭐ mới -->
+    <th style="width: 120px;">Đơn giá </th>
     <th style="width: 120px;">Tổng Giá List</th> <!-- ⭐ mới -->
     <th style="width: 120px;">Thành tiền</th>
     <th style="width: 100px;">VAT</th>
@@ -191,6 +199,13 @@
       </div>
     </div>
   </div>
+  <div v-if="showAlert" class="custom-alert">
+  <div class="custom-alert-box">
+    <p>{{ alertMessage }}</p>
+    <button @click="showAlert = false" class="btn btn-sm btn-danger mt-2">Đóng</button>
+  </div>
+</div>
+
 </template>
 
 <script setup>
@@ -198,23 +213,29 @@ import { ref, computed, onMounted,watch } from 'vue'
 import axios from 'axios'
 
 const backendUrl = 'https://script.google.com/macros/s/AKfycbxYoVdYvA0QNanulci7YUegMka45bPzLQuut40k9piW4U1ss9v6cnpNTE9iwPAk3VuI5A/exec'
+const excelDownloadUrl = 'https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/export?format=xlsx';
 
 const companyName = ref('')
 const receiverName = ref('')
 const receiverAddress = ref('')
-
 const currency = ref('VND') // 🟡 ComboBox: VND hoặc USD
-
 const products = ref([])
 const licenses = ref([])
 const models = ref([])
 const productList = ref([])
 const selectedModelName = ref('')
 const selectedLicenseName = ref('')
-const form = ref({ quantity: 1, vat: 20, offPercent: 0 })
+const form = ref({ quantity: 1, vat: 10, offPercent: 0 })
 const showModal = ref(false)
 const editingProduct = ref({})
 let editingIndex = -1
+const showAlert = ref(false)
+const alertMessage = ref('')
+
+const customAlert = (msg) => {
+  alertMessage.value = msg
+  showAlert.value = true
+}
 
 const fetchProducts = async () => {
   try {
@@ -413,7 +434,8 @@ const exportToGoogleSheet = async () => {
 
     setTimeout(() => {
       alert('✅ OK RỒI CHÚ SƠN CU BỰ')
-      window.location.href = 'https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712'
+      window.open('https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712', '_blank');
+
     }, 500)
   } catch (error) {
     console.error('Lỗi xuất Google Sheet:', error)
@@ -432,6 +454,12 @@ const goToUpdateLicense = () => {
 const goToCurrentForm = () => {
   window.open('https://docs.google.com/spreadsheets/d/1J8-2PioiG1JEumeQ5k90B-Jux9M1noRXSOwJsuPlghM/edit?gid=1649674712', '_blank')
 }
+
+window.alert = (msg) => {
+  alertMessage.value = msg
+  showAlert.value = true
+}
+
 </script>
 
 
@@ -491,6 +519,25 @@ const goToCurrentForm = () => {
 /* 🔥 Thêm chặn scroll ngang toàn bộ */
 body {
   overflow-x: hidden;
+}
+.custom-alert {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-alert-box {
+  background: white;
+  color: black;
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #000;
+  max-width: 400px;
+  text-align: center;
 }
 
 </style>
