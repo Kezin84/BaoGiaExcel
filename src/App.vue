@@ -51,6 +51,11 @@
               <label class="form-label" style="color: blue;font-weight: bold;">VAT (%)</label>
               <input v-model.number="form.vat" type="number" min="0" class="form-control" />
             </div>
+            <div class="mb-3">
+  <label class="form-label" style="color: blue;font-weight: bold;">Mức Off (%)</label>
+  <input v-model.number="form.offPercent" type="number" min="0" max="100" class="form-control" />
+</div>
+
           </div>
 
           <button @click="addProduct" class="btn btn-success w-100 mt-3" style="background-color: blue;">
@@ -82,38 +87,48 @@
           <thead class="table-light">
             <tr>
               <th style="width: 50px;">STT</th>
-              <th style="width: 150px;">Tên hàng hóa</th>
-              <th style="width: 400px;">Diễn giải</th>
-              <th style="width: 80px;">Hãng</th>
-              <th style="width: 80px;">Đơn vị tính</th>
-              <th style="width: 50px;">S.L</th>
-              <th style="width: 120px;">Đơn giá (VNĐ)</th>
-              <th style="width: 120px;">Thành tiền</th>
-              <th style="width: 100px;">VAT</th>
-              <th style="width: 140px;">Thành tiền + VAT</th>
+    <th style="width: 150px;">Tên hàng hóa</th>
+    <th style="width: 400px;">Diễn giải</th>
+    <th style="width: 80px;">Hãng</th>
+    <th style="width: 80px;">Đơn vị tính</th>
+    <th style="width: 50px;">S.L</th>
+    <th style="width: 120px;">Giá List (VNĐ)</th> <!-- ⭐ mới -->
+    <th style="width: 120px;">Đơn giá (VNĐ)</th>
+    <th style="width: 120px;">Tổng Giá List</th> <!-- ⭐ mới -->
+    <th style="width: 120px;">Thành tiền</th>
+    <th style="width: 100px;">VAT</th>
+    <th style="width: 140px;">Thành tiền + VAT</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(product, index) in productList" :key="index" @click="selectProduct(product, index)" :class="{ 'selected-row': editingIndex === index }" style="cursor: pointer">
               <td>{{ index + 1 }}</td>
-              <td>{{ product.name }}</td>
-              <td class="text-start">{{ product.description }}</td>
-              <td>{{ product.type }}</td>
-              <td>{{ product.unit }}</td>
-              <td>{{ product.quantity }}</td>
-              <td>{{ formatPrice(product.price) }}</td>
-              <td>{{ formatPrice(product.total) }}</td>
-              <td>{{ formatPrice(product.vatAmount) }}</td>
-              <td>{{ formatPrice(product.grandTotal) }}</td>
+    <td>{{ product.name }}</td>
+    <td class="text-start">{{ product.description }}</td>
+    <td>{{ product.type }}</td>
+    <td>{{ product.unit }}</td>
+    <td>{{ product.quantity }}</td>
+    <td>{{ formatPrice(product.originPrice) }}</td> <!-- ⭐ Giá list -->
+    <td>{{ formatPrice(product.price) }}</td>         <!-- Giá sau Off -->
+    <td>{{ formatPrice(product.originPrice * product.quantity) }}</td> <!-- ⭐ Tổng giá list -->
+    <td>{{ formatPrice(product.total) }}</td>
+    <td>{{ formatPrice(product.vatAmount) }}</td>
+    <td>{{ formatPrice(product.grandTotal) }}</td>
             </tr>
             <tr class="bg-warning fw-bold">
-              <td colspan="7" class="text-end">TỔNG CỘNG + THUẾ</td>
-              <td>{{ formatPrice(totalThanhTien) }}</td>
-              <td>{{ formatPrice(totalVAT) }}</td>
-              <td>{{ formatPrice(totalGrandTotal) }}</td>
-            </tr>
+  <td colspan="8" class="text-end">TỔNG CỘNG + THUẾ</td>
+  <td>{{ formatPrice(totalTongGiaList) }}</td> <!-- Tổng giá list -->
+  <td>{{ formatPrice(totalThanhTien) }}</td> <!-- Thành tiền sau off -->
+  <td>{{ formatPrice(totalVAT) }}</td>
+  <td>{{ formatPrice(totalGrandTotal) }}</td>
+</tr>
           </tbody>
         </table>
+        <div class="mt-3 text-end" style="color: greenyellow; font-size: large;">
+  Chênh lệch tổng giá list: 
+  <strong><span style="font-weight: bold;font-size: large;">{{ formatPrice(differenceThanhTienVsGiaList) }}</span></strong>
+</div>
+
       </div>
     </div>
 
@@ -155,11 +170,12 @@
           </div>
         </div>
         <div class="row g-2 mt-2">
-          <div class="col-6">
-            <label class="form-label"style="color: red;font-weight: bold;">VAT (%)</label>
-            <input v-model.number="editingProduct.vatPercent" type="number" min="0" class="form-control" />
-          </div>
-        </div>
+  <div class="col-6">
+    <label class="form-label" style="color: blue;font-weight: bold;">Mức Off (%)</label>
+    <input v-model.number="editingProduct.offPercent" type="number" min="0" max="100" class="form-control" />
+  </div>
+</div>
+
         <div class="mt-3 text-end">
           <button @click="updateProduct" class="btn btn-primary">Lưu</button>
           <button @click="deleteProduct" class="btn btn-danger mx-2">Xóa</button>
@@ -180,13 +196,14 @@ const companyName = ref('')
 const receiverName = ref('')
 const receiverAddress = ref('')
 
+
 const products = ref([])
 const licenses = ref([])
 const models = ref([])
 const productList = ref([])
 const selectedModelName = ref('')
 const selectedLicenseName = ref('')
-const form = ref({ quantity: 1, vat: 20 })
+const form = ref({ quantity: 1, vat: 20,offPercent: 0 })
 const showModal = ref(false)
 const editingProduct = ref({})
 let editingIndex = -1
@@ -249,22 +266,29 @@ const addProduct = () => {
     description = licenseObj?.description || ''
   }
 
-  const total = price * form.value.quantity
-  const vatAmount = (total * form.value.vat) / 100
-  const grandTotal = total + vatAmount
+  // Tính giá sau khi trừ mức Off
+const finalPrice = Math.round(price * (1 - (form.value.offPercent || 0) / 100));
 
-  productList.value.push({
-    name,
-    description,
-    type,
-    unit: 'Bộ',
-    quantity: form.value.quantity,
-    price,
-    total,
-    vatAmount,
-    grandTotal,
-    vatPercent: form.value.vat
-  })
+const total = finalPrice * form.value.quantity
+const vatAmount = (total * form.value.vat) / 100
+const grandTotal = total + vatAmount
+
+productList.value.push({
+  name,
+  description,
+  type,
+  unit: 'Bộ',
+  quantity: form.value.quantity,
+  price: finalPrice,
+  total,
+  vatAmount,
+  grandTotal,
+  vatPercent: form.value.vat,
+  offPercent: form.value.offPercent || 0,
+  originPrice: price // ⭐ Lưu thêm giá gốc (chưa off)
+})
+
+
 
   selectedModelName.value = ''
   selectedLicenseName.value = ''
@@ -282,26 +306,53 @@ const totalGrandTotal = computed(() =>
   productList.value.reduce((sum, item) => sum + item.grandTotal, 0)
 )
 
+const differenceThanhTienVsGiaList = computed(() =>
+ totalTongGiaList.value - totalThanhTien.value
+)
+
+const totalTongGiaList = computed(() =>
+  productList.value.reduce((sum, item) => {
+    const origin = item.originPrice || 0;
+    const qty = item.quantity || 0;
+    return sum + (origin * qty);
+  }, 0)
+)
 const formatPrice = (value) => {
   if (isNaN(value)) return '0 ₫'
   return value.toLocaleString('vi-VN') 
 }
 
 const selectProduct = (product, index) => {
-  editingProduct.value = { ...product }
+  editingProduct.value = { 
+  ...product, 
+  offPercent: product.offPercent || 0, 
+  originPrice: product.originPrice || product.price // fallback nếu cũ không có originPrice
+}
+
   editingIndex = index
   showModal.value = true
 }
 
 const updateProduct = () => {
-  const vatRate = editingProduct.value.vatPercent ?? 10
-  const total = editingProduct.value.price * editingProduct.value.quantity
-  editingProduct.value.total = total
-  editingProduct.value.vatAmount = (total * vatRate) / 100
-  editingProduct.value.grandTotal = editingProduct.value.total + editingProduct.value.vatAmount
-  productList.value[editingIndex] = { ...editingProduct.value }
-  showModal.value = false
-}
+  const vatRate = editingProduct.value.vatPercent ?? 10;
+
+  const offMultiplier = 1 - (editingProduct.value.offPercent || 0) / 100;
+  const finalPrice = Math.round(editingProduct.value.originPrice * offMultiplier);
+
+  const total = finalPrice * editingProduct.value.quantity;
+  const vatAmount = (total * vatRate) / 100;
+  const grandTotal = total + vatAmount;
+
+  editingProduct.value.price = finalPrice;
+  editingProduct.value.total = total;
+  editingProduct.value.vatAmount = vatAmount;
+  editingProduct.value.grandTotal = grandTotal;
+
+  productList.value[editingIndex] = { ...editingProduct.value };
+  showModal.value = false;
+};
+
+
 
 const deleteProduct = () => {
   productList.value.splice(editingIndex, 1)
@@ -371,14 +422,61 @@ const goToCurrentForm = () => {
 </script>
 
 <style scoped>
+.form-control {
+  border-color: black;
+}
 
-.form-control{border-color:black ;}
-.container { max-width: 1600px; }
-.fixed-table { table-layout: fixed; width: 100%; }
-.fixed-table th, .fixed-table td { white-space: normal; word-break: break-word; padding: 8px; height: 80px; }
-.text-start { text-align: left !important; }
-.selected-row { background-color: #fff3cd !important; }
-.modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 400px; max-height: 90vh; overflow-y: auto; color:black}
+.container {
+  max-width: 1600px;
+  margin: 0 auto; /* 🔥 thêm dòng này để container ra giữa */
+}
+
+.fixed-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.fixed-table th, .fixed-table td {
+  white-space: normal;
+  word-break: break-word;
+  padding: 8px;
+  height: 80px;
+}
+
+.text-start {
+  text-align: left !important;
+}
+
+.selected-row {
+  background-color: #fff3cd !important;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: black;
+}
+
+/* 🔥 Thêm chặn scroll ngang toàn bộ */
+body {
+  overflow-x: hidden;
+}
+
 </style>
 
